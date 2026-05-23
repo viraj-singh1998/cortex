@@ -1,0 +1,41 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "cortex-memory"
+version = "0.1.0"
+description = "Time-aware preference memory engine for LLM agents"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "Viraj Singh", email = "viraj30598@gmail.com" }]
+keywords = ["llm", "memory", "agents", "preference", "ebbinghaus"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = [
+    "pydantic>=2.0",
+    "rank-bm25>=0.2",
+    "numpy>=1.24",
+]
+
+[project.optional-dependencies]
+semantic = ["sentence-transformers>=2.2"]
+anthropic = ["anthropic>=0.40"]
+# openai covers OpenAI directly, OpenRouter, Groq, Mistral, Together — any OpenAI-compatible
+# provider. Pass a custom base_url + api_key to the AsyncOpenAI client to switch providers.
+openai = ["openai>=1.0"]
+langgraph = ["langgraph>=0.2"]
+all = ["cortex-memory[semantic,anthropic,openai,langgraph]"]
+
+[project.urls]
+Homepage = "https://github.com/viraj-singh1998/cortex"
+Repository = "https://github.com/viraj-singh1998/cortex"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/cortex"]

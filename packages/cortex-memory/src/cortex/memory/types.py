@@ -96,6 +96,20 @@ class Memory(BaseModel):
     content: str
     memory_type: MemoryType
 
+    # Multi-scope identity fields. All optional — if None, the memory is unscoped
+    # (shared across all users/agents/sessions). Set these to isolate memories in
+    # multi-user or multi-agent deployments. The store pre-filters on these before
+    # any BM25 or semantic scoring runs.
+    user_id: Optional[str] = None
+    agent_id: Optional[str] = None
+    run_id: Optional[str] = None
+
+    # Who generated this memory.
+    # "user"  → the user explicitly stated this fact ("I prefer dark mode")
+    # "agent" → the LLM inferred this from context (retain_node extraction)
+    # Agent inferences can be wrong; this field lets callers weight or filter accordingly.
+    source: str = "user"
+
     confidence: float = Field(default=1.0, ge=0.0, le=1.0)
 
     # Ebbinghaus stability. Sentinel 0.0 means "set from type" — the validator below
@@ -148,6 +162,13 @@ class AddRequest(BaseModel):
     entity_tags: list[str] = Field(default_factory=list)
     metadata: dict[str, Any] = Field(default_factory=dict)
 
+    # Mirror of Memory's scope fields — pass these and the engine stamps them onto
+    # the created Memory object. Leave None for unscoped (global) memories.
+    user_id: Optional[str] = None
+    agent_id: Optional[str] = None
+    run_id: Optional[str] = None
+    source: str = "user"
+
     # Surrounding conversation turns passed to _enrich() so the LLM can generate
     # richer keywords and contextual_description than it could from content alone.
     # Format: [{"role": "user"|"assistant", "content": "..."}]
@@ -161,6 +182,13 @@ class SearchQuery(BaseModel):
     max_results: int = 10
     min_confidence: float = 0.0
     entity_filter: list[str] = Field(default_factory=list)
+
+    # Scope filters — applied as hard pre-filters before BM25/semantic scoring.
+    # Only memories matching ALL provided scopes are candidates.
+    # Leave None to search across that dimension (e.g. user_id=None searches all users).
+    user_id: Optional[str] = None
+    agent_id: Optional[str] = None
+    run_id: Optional[str] = None
 
     # Bi-temporal range filter. Applied before BM25/semantic scoring so only
     # memories whose event_time falls in range are even candidates.

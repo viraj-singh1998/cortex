@@ -232,6 +232,17 @@ class MemoryStore(Protocol):
     def put(self, memory: Memory) -> None: ...
     def delete(self, memory_id: str) -> None: ...
     def all(self) -> list[Memory]: ...
+    def filter(
+        self,
+        *,
+        user_id: Optional[str] = None,
+        agent_id: Optional[str] = None,
+        run_id: Optional[str] = None,
+    ) -> list[Memory]:
+        # Return memories matching ALL provided scope constraints.
+        # None on any dimension means "don't filter on this dimension".
+        # Future stores (SQLite, Redis) translate these into WHERE clauses.
+        ...
 
 
 @runtime_checkable

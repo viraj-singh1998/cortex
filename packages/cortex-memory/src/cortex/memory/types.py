@@ -59,6 +59,19 @@ class DecayConfig:
     # recency_weight = e^(-days_since_ingestion / recency_halflife_days)
     recency_halflife_days: float = 14.0
 
+    # Hard cap on bidirectional links per memory established at add() time.
+    # Without this, a generic memory in a large store could link to hundreds of others,
+    # making retroactive propagation and graph traversal expensive. 10 links covers
+    # the meaningful neighbourhood without blowing up the graph.
+    max_links_per_memory: int = 10
+
+    # Boost multipliers applied to inject() final scoring by memory type.
+    # WORKING is always prepended and never scored. Among retrieved memories,
+    # SEMANTIC preferences rank above EPISODIC events, which rank above PROCEDURAL.
+    tier_boost_semantic: float = 1.0
+    tier_boost_episodic: float = 0.9
+    tier_boost_procedural: float = 0.8
+
     def stability_for(self, memory_type: MemoryType) -> float:
         return {
             MemoryType.WORKING: self.stability_working,
@@ -82,6 +95,17 @@ class DecayConfig:
             MemoryType.EPISODIC: self.contradict_weight_episodic,
             MemoryType.SEMANTIC: self.contradict_weight_semantic,
             MemoryType.PROCEDURAL: self.contradict_weight_procedural,
+        }[memory_type]
+
+    def tier_boost_for(self, memory_type: MemoryType) -> float:
+        # WORKING memories are never scored — they're always prepended to inject() output.
+        # Among retrieved memories, preferences (SEMANTIC) outrank events (EPISODIC)
+        # which outrank workflows (PROCEDURAL) when retrieval scores are otherwise close.
+        return {
+            MemoryType.WORKING: 1.0,
+            MemoryType.SEMANTIC: self.tier_boost_semantic,
+            MemoryType.EPISODIC: self.tier_boost_episodic,
+            MemoryType.PROCEDURAL: self.tier_boost_procedural,
         }[memory_type]
 
 
@@ -132,7 +156,14 @@ class Memory(BaseModel):
     # event_time=Thursday, ingestion_time=Monday.
     event_time: datetime = Field(default_factory=_now)
     ingestion_time: datetime = Field(default_factory=_now)
-    last_reinforced: datetime = Field(default_factory=_now)
+
+    # The timestamp at which the stored `confidence` value was accurate.
+    # The Ebbinghaus decay formula uses this as its clock start:
+    #   current_confidence = confidence × e^(-t / stability)
+    # where t = (now - confidence_updated_at).
+    # Updated by BOTH reinforce() and contradict() — any time confidence changes,
+    # this resets so decay is computed from the new value, not from the old one.
+    confidence_updated_at: datetime = Field(default_factory=_now)
 
     access_count: int = 0
     reinforcement_count: int = 0

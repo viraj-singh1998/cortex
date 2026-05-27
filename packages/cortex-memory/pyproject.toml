@@ -33,6 +33,9 @@ openai = ["openai>=1.0"]
 langgraph = ["langgraph>=0.2"]
 all = ["cortex-memory[semantic,anthropic,openai,langgraph]"]
 
+[project.scripts]
+cortex-memory-configure = "cortex.memory.configure:run"
+
 [project.urls]
 Homepage = "https://github.com/viraj-singh1998/cortex"
 Repository = "https://github.com/viraj-singh1998/cortex"

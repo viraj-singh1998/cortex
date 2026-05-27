@@ -39,3 +39,8 @@ Repository = "https://github.com/viraj-singh1998/cortex"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/cortex"]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.3",
+]

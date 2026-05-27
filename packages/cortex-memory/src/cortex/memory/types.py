@@ -27,6 +27,18 @@ class ConflictStrategy(str, Enum):
     VERSION_BOTH = "version_both"
 
 
+class LinkRelationship(str, Enum):
+    RELATED = "related"      # default at write time
+    SUPPORTS = "supports"    # retroactive: aligned
+    CONTRADICTS = "contradicts"  # retroactive: in tension, both may be true in different contexts
+    SUPERSEDES = "supersedes"    # retroactive: M replaces linked memory; target becomes SUPERSEDED
+
+
+class MemoryStatus(str, Enum):
+    ACTIVE = "active"
+    SUPERSEDED = "superseded"  # gated out of inject(); retained for audit/history
+
+
 @dataclass
 class DecayConfig:
     # Ebbinghaus stability per type (days). Formula: R = confidence * e^(-t/stability)
@@ -115,6 +127,11 @@ class DecayConfig:
 _DEFAULT_DECAY = DecayConfig()
 
 
+class Link(BaseModel):
+    target_id: str
+    relationship: LinkRelationship = LinkRelationship.RELATED
+
+
 class Memory(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     content: str
@@ -142,12 +159,13 @@ class Memory(BaseModel):
     stability: float = Field(default=0.0, ge=0.0)
 
     # A-MEM fields — populated by engine._enrich() at add() time.
-    # keywords and contextual_description feed BM25; links form the semantic graph.
+    # keywords, contextual_description, and retrieval_notes feed BM25; links form the semantic graph.
     # content and contextual_description are immutable after creation (production safety rule):
     # evolution only ever touches keywords and entity_tags.
     keywords: list[str] = Field(default_factory=list)
     contextual_description: str = ""
-    links: list[str] = Field(default_factory=list)
+    links: list[Link] = Field(default_factory=list)
+    retrieval_notes: str = ""
 
     # Bi-temporal timestamps (Graphiti pattern).
     # event_time = when the fact was true in the world.
@@ -169,6 +187,8 @@ class Memory(BaseModel):
     reinforcement_count: int = 0
     entity_tags: list[str] = Field(default_factory=list)
     metadata: dict[str, Any] = Field(default_factory=dict)
+    status: MemoryStatus = MemoryStatus.ACTIVE
+    superseded_by: Optional[str] = None
 
     # PAMU-style dual confidence tracking.
     # confidence_history stores raw values (capped at 20 entries to bound memory).
